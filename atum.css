@@ -1,0 +1,26 @@
+  
+  @media (max-width:520px){body{padding:10px}}
+  :root{font-family:Inter,Arial,Helvetica,sans-serif;color:#111}
+    body{max-width:900px;margin:24px auto;padding:16px}
+    h1{font-size:22px;margin-bottom:6px}
+    .card{border:1px solid #e6e6e6;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 6px 18px rgba(2,6,23,0.03)}
+    label{display:block;margin-top:8px;font-size:13px}
+    input,select,button{padding:8px;border-radius:6px;border:1px solid #d0d0d0;font-size:14px}
+    button{cursor:pointer}
+    .flex{display:flex;gap:8px;align-items:center}
+    .slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+    .slot{padding:8px;border-radius:6px;border:1px solid #dcdcdc;background:#fafafa}
+    .slot.taken{background:#ffecec;border-color:#ffbaba}
+    .list{margin-top:12px}
+    .row{display:flex;justify-content:space-between;padding:8px 6px;border-bottom:1px dashed #eee}
+    .muted{color:#666;font-size:13px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    pre{background:#f7f7f7;padding:8px;border-radius:6px;overflow:auto}
+    .controls button {
+      background: #228bee;
+      color: white;
+    }
+    .controls button:hover{
+      background: white;
+      color:#228bee;
+    }

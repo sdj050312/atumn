@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>과외 예약 프로그램</title>
+   <link rel="stylesheet" href="atum.css">
+</head>
+<body>
+  <h1>가을이 예약 프로그램 (브라우저용)</h1>
+  <div class="card">
+    <div class="muted">설명: 날짜와 시간 슬롯을 선택해 예약을 추가/취소합니다. 데이터는 브라우저 localStorage에 저장됩니다.</div>
+
+    <label for="name">이름</label>
+    <input id="name" placeholder="송중기" />
+
+    <label for="phone">연락처</label>
+    <input id="phone" placeholder="010-1234-5678" />
+
+    <label for="date">날짜</label>
+    <input id="date" type="date" />
+
+    <label for="timeRange">시간대</label>
+    <select id="timeRange">
+      <option value="09:00-10:00">09:00 - 10:00</option>
+      <option value="10:00-11:00">10:00 - 11:00</option>
+      <option value="11:00-12:00">11:00 - 12:00</option>
+      <option value="13:00-14:00">13:00 - 14:00</option>
+      <option value="14:00-15:00">14:00 - 15:00</option>
+      <option value="15:00-16:00">15:00 - 16:00</option>
+      <option value="16:00-17:00">16:00 - 17:00</option>
+      <option value="17:00-18:00">17:00 - 18:00</option>
+      <option value="18:00-19:00">17:00 - 18:00</option>
+
+      <option value="19:00-20:00">17:00 - 18:00</option>
+      <option value="20:00-21:00">17:00 - 18:00</option>
+      <option value="21:00-22:00">17:00 - 18:00</option>
+
+      <option value="22:00-23:00">17:00 - 18:00</option>
+
+      <option value="23:00-00:00">17:00 - 18:00</option>
+
+
+    </select>
+
+    <div class="controls">
+      <button id="bookBtn">예약하기</button>
+      <button id="clearDayBtn">선택한 날짜 전체 삭제</button>
+      <button id="exportBtn">내보내기 (JSON)</button>
+      <button id="importBtn">가져오기 (JSON)</button>
+      <input id="importFile" type="file" accept="application/json" style="display:none" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flex">
+      <div>
+        <strong>선택한 날짜 예약</strong>
+        <div class="muted">날짜를 선택하면 해당 날짜의 예약이 아래에 표시됩니다.</div>
+      </div>
+      <div style="margin-left:auto" class="muted">총 예약: <span id="totalCount">0</span></div>
+    </div>
+
+    <div id="slots" class="slots"></div>
+    <div class="list" id="reservationsList"></div>
+  </div>
+
+  <script>
+    // 간단한 브라우저 예약 시스템
+    // - 구조: { id, name, phone, date (YYYY-MM-DD), timeRange, createdAt }
+    // - 중복 검사: 같은 날짜와 같은 timeRange는 하나만 예약 가능
+
+    const LS_KEY = 'simple_reservations_v1'
+
+    function readStorage(){
+      try{
+        return JSON.parse(localStorage.getItem(LS_KEY) || '[]')
+      }catch(e){
+        console.error('parse error', e)
+        return []
+      }
+    }
+    function writeStorage(data){
+      localStorage.setItem(LS_KEY, JSON.stringify(data))
+    }
+
+    function uid(){return Math.random().toString(36).slice(2,9)}
+
+    const nameEl = document.getElementById('name')
+    const phoneEl = document.getElementById('phone')
+    const dateEl = document.getElementById('date')
+    const timeEl = document.getElementById('timeRange')
+    const bookBtn = document.getElementById('bookBtn')
+    const slotsEl = document.getElementById('slots')
+    const listEl = document.getElementById('reservationsList')
+    const totalCountEl = document.getElementById('totalCount')
+    const clearDayBtn = document.getElementById('clearDayBtn')
+    const exportBtn = document.getElementById('exportBtn')
+    const importBtn = document.getElementById('importBtn')
+    const importFile = document.getElementById('importFile')
+
+    // 페이지 초기 날짜: 오늘
+    dateEl.value = new Date().toISOString().slice(0,10)
+
+    function formatDate(d){return d}
+
+    function getReservationsForDate(date){
+      const all = readStorage()
+      return all.filter(r => r.date === date).sort((a,b)=> a.timeRange.localeCompare(b.timeRange))
+    }
+
+    function renderSlots(){
+      const date = dateEl.value
+      const slots = Array.from(timeEl.querySelectorAll('option')).map(o=>o.value)
+      const reservations = getReservationsForDate(date)
+      slotsEl.innerHTML = ''
+      slots.forEach(s =>{
+        const taken = reservations.some(r => r.timeRange === s)
+        const div = document.createElement('div')
+        div.className = 'slot' + (taken ? ' taken' : '')
+        div.innerHTML = `<div style="font-weight:600">${s}</div><div class=\"muted\">${taken ? '예약됨' : '가능'}</div>`
+        if(!taken){
+          const btn = document.createElement('button')
+          btn.textContent = '바로 예약'
+          btn.style.marginTop = '8px'
+          btn.onclick = ()=>{
+            timeEl.value = s
+            nameEl.focus()
+          }
+          div.appendChild(btn)
+        }
+        slotsEl.appendChild(div)
+      })
+
+      renderList()
+    }
+
+    function renderList(){
+      const date = dateEl.value
+      const res = getReservationsForDate(date)
+      totalCountEl.textContent = readStorage().length
+      listEl.innerHTML = ''
+      if(res.length === 0){
+        listEl.innerHTML = '<div class="muted">예약이 없습니다.</div>'
+        return
+      }
+      res.forEach(r=>{
+        const row = document.createElement('div')
+        row.className = 'row'
+        row.innerHTML = `<div><strong>${r.timeRange}</strong> — ${r.name} <div class=\"muted\">${r.phone}</div></div>`
+        const right = document.createElement('div')
+        right.style.textAlign = 'right'
+        right.innerHTML = `<div class=\"muted\">${new Date(r.createdAt).toLocaleString()}</div>`
+        const cancel = document.createElement('button')
+        cancel.textContent = '취소'
+        cancel.onclick = ()=>{
+          if(confirm('진짜 취소할꼬얌...?')){
+            const all = readStorage().filter(x => x.id !== r.id)
+            writeStorage(all)
+            renderSlots()
+          }
+        }
+        right.appendChild(cancel)
+        row.appendChild(right)
+        listEl.appendChild(row)
+      })
+    }
+
+    bookBtn.addEventListener('click', ()=>{
+      const name = nameEl.value.trim()
+      const phone = phoneEl.value.trim()
+      const date = dateEl.value
+      const timeRange = timeEl.value
+      if(!name){alert('자중해! 이름 입력하라구!'); nameEl.focus(); return}
+      if(!phone){alert('자중해! 연락처 입력하라구!'); phoneEl.focus(); return}
+      if(!date){alert('너! 진짜! 마지막까지!!'); dateEl.focus(); return}
+
+      // 중복 검사
+      const all = readStorage()
+      if(all.some(r=> r.date === date && r.timeRange === timeRange)){
+        alert('이미 예약된 시간입니다. 다른 시간을 선택하세요.')
+        return
+      }
+
+      const obj = { id: uid(), name, phone, date, timeRange, createdAt: new Date().toISOString() }
+      all.push(obj)
+      writeStorage(all)
+      nameEl.value = ''
+      phoneEl.value = ''
+      renderSlots()
+    })
+
+    dateEl.addEventListener('change', renderSlots)
+
+    clearDayBtn.addEventListener('click', ()=>{
+      const date = dateEl.value
+      if(!date) return alert('날짜를 선택하세요')
+      if(!confirm(date + '의 모든 예약을 삭제할까요?')) return
+      const all = readStorage().filter(r => r.date !== date)
+      writeStorage(all)
+      renderSlots()
+    })
+
+    exportBtn.addEventListener('click', ()=>{
+      const data = readStorage()
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `reservations_${new Date().toISOString().slice(0,10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    })
+
+    importBtn.addEventListener('click', ()=> importFile.click())
+    importFile.addEventListener('change', ev=>{
+      const f = ev.target.files && ev.target.files[0]
+      if(!f) return
+      const reader = new FileReader()
+      reader.onload = e => {
+        try{
+          const imported = JSON.parse(e.target.result)
+          if(!Array.isArray(imported)) throw new Error('올바른 형식이 아닙니다')
+          // 간단 머지: id 중복은 새 id로 교체
+          const existing = readStorage()
+          const existingIds = new Set(existing.map(x=>x.id))
+          const normalized = imported.map(item => ({
+            id: item.id && !existingIds.has(item.id) ? item.id : uid(),
+            name: item.name || '미상',
+            phone: item.phone || '',
+            date: item.date,
+            timeRange: item.timeRange,
+            createdAt: item.createdAt || new Date().toISOString()
+          })).filter(x => x.date && x.timeRange)
+
+          writeStorage(existing.concat(normalized))
+          alert('가져오기 완료')
+          renderSlots()
+        }catch(err){
+          alert('가져오기 실패: ' + err.message)
+        }
+      }
+      reader.readAsText(f)
+    })
+
+    // 초기 렌더
+    renderSlots()
+
+    // 개발자용: 콘솔에서 함수 사용 가능
+    window.__RS = {readStorage, writeStorage, getReservationsForDate, renderSlots}
+  </script>
+</body>
+</html>
